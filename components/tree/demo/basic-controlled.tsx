@@ -2,6 +2,99 @@ import React, { useState } from 'react';
 import { Tree } from 'antd';
 import type { TreeDataNode, TreeProps } from 'antd';
 
+
+
+<template>
+  <el-tree-v2
+    ref="treeV2Ref"
+    v-loading="loading"
+    :data="treeData"
+    :props="props.props"
+    :check-strictly="props.checkStrictly"
+    :showCheckbox="props.showCheckbox"
+    @check-change="treeChange"
+  >
+    <template #default="{ node, data }">
+      <span class="prefix" :class="{ 'is-leaf': node.isLeaf }">
+        <el-button
+          v-if="data.children && data.children.length"
+          link
+          type="primary"
+          @click.stop="nodeClick(node, data)"
+          :disabled="node.disabled"
+        >
+          <slot name="select-all-title">
+            [全选]
+          </slot>
+        </el-button>
+        {{ node.label }}
+      </span>
+    </template>
+  </el-tree-v2>
+</template>
+
+<script setup>
+import { uniq, without } from 'lodash-es';
+
+// 获取全部子节点
+/**
+ * @description: 
+ * @param {Array} list
+ * @param {Array} result
+ * @return {Array}
+ */
+const getDeepChildren = (list, result = []) => {
+  list.forEach((item) => {
+    if (item.children && item.children.length > 0) {
+      getDeepChildren(item.children, result);
+    }
+    !item.disabled && result.push(item.key);
+  });
+  return result;
+};
+
+/**
+ * @description: 判断存在未勾选
+ * @param {Array} checkedKeys
+ * @param {Array} childrens
+ * @return {Boolean}
+ */
+const isCheckAllChildren = (checkedKeys, childrens) => {
+  const setCheckedKeys = new Set();
+  checkedKeys.forEach((v) => setCheckedKeys.add(v));
+  for (let i = 0; i < childrens.length; i += 1) {
+    if (!setCheckedKeys.has(childrens[i])) {
+      return false;
+    }
+  }
+  return true;
+};
+/**
+ * @description: 全选点击
+ * @param {*} node
+ * @return {*}
+ */
+const nodeClick = (node) => {
+  if (node.disabled) return false;
+  const checkedKeys = treeV2Ref.value?.getCheckedKeys();
+  const childrens = [...getDeepChildren(node.children ?? []), node.key]; // 全选-包含本级
+  nextTick(() => {
+    let list = [];
+    if (isCheckAllChildren(checkedKeys, childrens)) {
+      // 反选
+      list = without(checkedKeys, ...childrens);
+      treeV2Ref.value.setCheckedKeys();
+    } else {
+      list = uniq([...checkedKeys, ...childrens]);
+    }
+    treeV2Ref.value.setCheckedKeys(list);
+    update(list);
+  });
+};
+</script>
+
+
+
 const treeData: TreeDataNode[] = [
   {
     title: '0-0',
